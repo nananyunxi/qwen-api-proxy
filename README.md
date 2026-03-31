@@ -4,11 +4,25 @@
 
 ## API 调用信息
 
-| 参数 | 值 |
-|------|-----|
-| **Base URL** | `https://acknowledged-characteristics-planets-rates.trycloudflare.com/v1` |
-| **API Key** | `qk_c2f0e1a9e3fa538d593a9be63e42bf4802927067dd87c15c` |
-| **Model** | `qwen3.5-plus` |
+访问信息保存在 `data/access.json` 文件中：
+
+```json
+{
+  "base_url": "https://xxx.trycloudflare.com/v1",
+  "model_id": "qwen3.5-plus",
+  "api_key": "qk_xxx",
+  "external_url": "https://xxx.trycloudflare.com"
+}
+```
+
+## 调用示例
+
+```bash
+curl -X POST {base_url}/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {api_key}" \
+  -d '{"model": "qwen3.5-plus", "messages": [{"role": "user", "content": "你好"}]}'
+```
 
 ## 支持的模型
 
@@ -21,30 +35,6 @@
 | `qwen3-coder-plus` | 代码专用模型 |
 | `qwen3-vl-plus` | 视觉理解模型 |
 
-## 调用示例
-
-```bash
-curl -X POST https://acknowledged-characteristics-planets-rates.trycloudflare.com/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer qk_c2f0e1a9e3fa538d593a9be63e42bf4802927067dd87c15c" \
-  -d '{"model": "qwen3.5-plus", "messages": [{"role": "user", "content": "你好"}]}'
-```
-
-## 自动管理功能
-
-- 凭证每 10 分钟自动验证
-- 服务状态自动监控
-- 外网穿透自动重连
-
-## 项目结构
-
-```
-qwen-api-proxy/
-├── manager.js      # 自动管理服务
-├── start.js       # 启动入口
-└── data/          # 配置目录
-```
-
 ## 启动服务
 
 ```bash
@@ -52,8 +42,10 @@ cd qwen-api-proxy
 node manager.js
 ```
 
+服务启动后访问信息保存在 `data/access.json`，每次启动外网地址可能会变化。
+
 ## 注意事项
 
-- 外网地址每次启动会变化（查看 data/access.json）
-- 登录凭证有效期较长，失效后需重新登录
-- API Key 在 data/config.json 中查看
+- 登录凭证有效期较长，失效后需重新运行 `node direct-login.js` 登录
+- API Key 在 `data/config.json` 中查看或重新生成
+- 外网地址在 `data/access.json` 中查看
