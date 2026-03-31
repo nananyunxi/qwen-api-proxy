@@ -541,6 +541,16 @@ async function main() {
   
   // 定时检查（每 10 分钟）
   setInterval(periodicCheck, 10 * 60 * 1000);
+  
+  // 保活：每 30 秒自检一次，防止休眠
+  setInterval(async () => {
+    try {
+      const res = await fetch('http://localhost:3001/health');
+      log('保活检测: ' + (res.ok ? 'OK' : 'FAIL'));
+    } catch (e) {
+      log('保活检测失败: ' + e.message, 'WARN');
+    }
+  }, 30000);
 }
 
 main().catch(e => {
