@@ -467,8 +467,8 @@ async function main() {
   // 首次检查
   await periodicCheck();
   
-  // 定时检查（每 5 分钟）
-  setInterval(periodicCheck, 5 * 60 * 1000);
+  // 定时检查（每 10 分钟）
+  setInterval(periodicCheck, 10 * 60 * 1000);
 }
 
 main().catch(e => {
