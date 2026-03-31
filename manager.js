@@ -313,7 +313,14 @@ function startAPIServer() {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         object: 'list',
-        data: [{ id: 'qwen3.5-plus', object: 'model', created: 1234567890, owned_by: 'qwen' }]
+        data: [
+          { id: 'qwen3.5-plus', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3.5-flash', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3-max-2026-01-23', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen-plus-2025-07-28', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3-coder-plus', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3-vl-plus', object: 'model', created: 1234567890, owned_by: 'qwen' }
+        ]
       }));
     }
     // 健康检查

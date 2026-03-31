@@ -238,6 +238,7 @@ function startAPIServer() {
       
       const model = req.body.model || 'qwen3.5-plus';
       const messages = req.body.messages || [];
+      const stream = req.body.stream || false;
       const userMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
       
       log(`收到请求: ${userMessage.substring(0, 20)}...`);
@@ -277,7 +278,7 @@ function startAPIServer() {
           }
         };
         
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(openaiResponse));
         
       } catch (e) {
@@ -286,7 +287,7 @@ function startAPIServer() {
         res.end(JSON.stringify({ error: e.message }));
       }
     }
-    // /v1/models
+    // /v1/chat/completions/stream - 专用流式接口
     else if (path === '/v1/models' && req.method === 'GET') {
       if (!validateAPIKey(req)) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -296,7 +297,14 @@ function startAPIServer() {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         object: 'list',
-        data: [{ id: 'qwen3.5-plus', object: 'model', created: 1234567890, owned_by: 'qwen' }]
+        data: [
+          { id: 'qwen3.5-plus', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3.5-flash', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3-max-2026-01-23', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen-plus-2025-07-28', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3-coder-plus', object: 'model', created: 1234567890, owned_by: 'qwen' },
+          { id: 'qwen3-vl-plus', object: 'model', created: 1234567890, owned_by: 'qwen' }
+        ]
       }));
     }
     // /health - 不需要认证
