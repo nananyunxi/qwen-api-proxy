@@ -39,6 +39,7 @@ curl -X POST {base_url}/chat/completions \
 
 ```bash
 cd qwen-api-proxy
+npm install
 node manager.js
 ```
 
