@@ -159,6 +159,57 @@ function startAPIServer() {
     return content;
   }
 
+  // SSE 流式解析并发送
+  function parseAndStreamSSE(data, res, model) {
+    const lines = data.split('\n');
+    const completionId = `chatcmpl-${Date.now()}`;
+    let index = 0;
+    
+    for (const line of lines) {
+      if (line.startsWith('data:')) {
+        const jsonStr = line.substring(5).trim();
+        if (jsonStr && jsonStr !== '[DONE]') {
+          try {
+            const json = JSON.parse(jsonStr);
+            const phase = json.choices?.[0]?.delta?.phase;
+            if (phase === 'answer') {
+              const content = json.choices[0].delta.content || '';
+              if (content) {
+                const chunk = {
+                  id: completionId,
+                  object: 'chat.completion.chunk',
+                  created: Math.floor(Date.now() / 1000),
+                  model: model,
+                  choices: [{
+                    index: index,
+                    delta: { role: 'assistant', content: content },
+                    finish_reason: null
+                  }]
+                };
+                res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    }
+    
+    // 发送结束
+    const done = {
+      id: completionId,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model: model,
+      choices: [{
+        index: index,
+        delta: {},
+        finish_reason: 'stop'
+      }]
+    };
+    res.write(`data: ${JSON.stringify(done)}\n\n`);
+    res.write('data: [DONE]\n\n');
+  }
+
   // 创建聊天
   async function createChat(cookie, model) {
     const postData = JSON.stringify({
@@ -274,6 +325,7 @@ function startAPIServer() {
       }
 
       const model = req.body.model || 'qwen3.5-plus';
+      const stream = req.body.stream || false;
       const userMessage = req.body.messages?.filter(m => m.role === 'user').pop()?.content || '';
       
       let cookie = getCookie();
@@ -286,17 +338,30 @@ function startAPIServer() {
       try {
         const chatId = await createChat(cookie, model);
         const data = await sendMessage(cookie, chatId, model, userMessage);
-        const content = parseSSE(data);
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          id: `chatcmpl-${Date.now()}`,
-          object: 'chat.completion',
-          created: Math.floor(Date.now() / 1000),
-          model: model,
-          choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
-          usage: { prompt_tokens: 0, completion_tokens: content.length, total_tokens: content.length }
-        }));
+        
+        if (stream) {
+          // 流式响应 - SSE 格式
+          res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Transfer-Encoding': 'chunked'
+          });
+          parseAndStreamSSE(data, res, model);
+          res.end();
+        } else {
+          // 非流式响应
+          const content = parseSSE(data);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            id: `chatcmpl-${Date.now()}`,
+            object: 'chat.completion',
+            created: Math.floor(Date.now() / 1000),
+            model: model,
+            choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 0, completion_tokens: content.length, total_tokens: content.length }
+          }));
+        }
       } catch (e) {
         log('API 错误: ' + e.message, 'ERROR');
         res.writeHead(500, { 'Content-Type': 'application/json' });
