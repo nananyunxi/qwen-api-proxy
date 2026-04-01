@@ -30,10 +30,16 @@ function loadAccessInfo() {
   }
 }
 
-// 调用本地 API
+// 调用本地 API（带 API Key）
 function callLocalAPI() {
   return new Promise((resolve, reject) => {
-    const req = http.get('http://localhost:3001/v1/models', { timeout: 5000 }, (res) => {
+    const access = loadAccessInfo();
+    const apiKey = access.api_key || '';
+    
+    const req = http.get('http://localhost:3001/v1/models', { 
+      timeout: 5000,
+      headers: { 'Authorization': 'Bearer ' + apiKey }
+    }, (res) => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
