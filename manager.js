@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const net = require('net');
 
-const PROJECT_DIR = path.dirname(__file__);
+const PROJECT_DIR = path.dirname(__filename);
 const DATA_DIR = path.join(PROJECT_DIR, 'data');
 const COOKIE_FILE = path.join(DATA_DIR, 'qwen-state.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
