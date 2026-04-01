@@ -391,11 +391,14 @@ function startAPIServer() {
     // 健康检查
     else if (pathUrl === '/health') {
       const cookieValid = await validateCookie();
+      const access = loadAccessInfo();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         status: 'ok',
         cookie_valid: cookieValid.valid,
-        tunnel_url: loadAccessInfo().external_url || 'unknown'
+        tunnel_url: access.external_url || 'unknown',
+        base_url: access.base_url || 'unknown',
+        api_key: access.api_key || 'unknown'
       }));
     }
     // 根路径
@@ -569,12 +572,54 @@ async function main() {
           // 杀掉旧的 cloudflared
           spawn('pkill', ['-f', 'cloudflared']);
           await new Promise(r => setTimeout(r, 2000));
-          // 重新启动
-          spawn('cloudflared', ['tunnel', '--url', 'http://localhost:3001'], {
-            detached: true,
-            stdio: 'ignore'
+          
+          // 重新启动并等待获取新 URL
+          await new Promise((resolve, reject) => {
+            const newProc = spawn('cloudflared', ['tunnel', '--url', 'http://localhost:3001'], {
+              stdio: ['ignore', 'pipe', 'pipe']
+            });
+            
+            let resolved = false;
+            newProc.stderr.on('data', data => {
+              const output = data.toString();
+              const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+              
+              if (match && !resolved) {
+                const newUrl = match[0];
+                log('隧道已重建，新地址: ' + newUrl);
+                
+                // 更新 access.json
+                const config = loadConfig();
+                saveAccessInfo({
+                  base_url: `${newUrl}/v1`,
+                  model_id: 'qwen3.5-plus',
+                  api_key: config.apiKey,
+                  external_url: newUrl,
+                  local_url: 'http://localhost:3001'
+                });
+                
+                resolved = true;
+                resolve();
+              }
+            });
+            
+            newProc.on('error', err => {
+              if (!resolved) {
+                resolved = true;
+                reject(err);
+              }
+            });
+            
+            // 超时后也算成功，让它继续运行
+            setTimeout(() => {
+              if (!resolved) {
+                resolved = true;
+                resolve();
+              }
+            }, 30000);
           });
-          log('已触发隧道重启', 'WARN');
+          
+          log('隧道重建完成', 'WARN');
         } catch (err) {
           log('隧道重启失败: ' + err.message, 'ERROR');
         }
