@@ -26,7 +26,8 @@ function visitUrl(url) {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
-        if (res.statusCode === 200) {
+        // 2xx 或 3xx 都算成功
+        if (res.statusCode >= 200 && res.statusCode < 400) {
           resolve('OK');
         } else {
           reject(new Error('Status: ' + res.statusCode));
