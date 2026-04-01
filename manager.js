@@ -368,6 +368,19 @@ function startAPIServer() {
         res.end(JSON.stringify({ error: e.message }));
       }
     }
+    // 获取当前访问信息（外网可访问）
+    else if (pathUrl === '/v1/info' && req.method === 'GET') {
+      const access = loadAccessInfo();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        external_url: access.external_url || '',
+        base_url: access.base_url || '',
+        api_key: access.api_key || '',
+        model_id: access.model_id || 'qwen3.5-plus',
+        status: 'ok'
+      }));
+      return;
+    }
     // 模型列表
     else if (pathUrl === '/v1/models' && req.method === 'GET') {
       if (!validateAPIKey(req)) {
