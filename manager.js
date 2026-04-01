@@ -544,11 +544,41 @@ async function main() {
   
   // 保活：每 1 分钟自检一次，防止休眠
   setInterval(async () => {
+    // 1. 检测本地服务
     try {
       const res = await fetch('http://localhost:3001/health');
-      log('保活检测: ' + (res.ok ? 'OK' : 'FAIL'));
+      if (!res.ok) throw new Error('health check failed');
     } catch (e) {
       log('保活检测失败: ' + e.message, 'WARN');
+    }
+    
+    // 2. 检测外网隧道
+    const access = loadAccessInfo();
+    if (access.external_url) {
+      try {
+        const testRes = await fetch(access.external_url + '/v1/models', { 
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000)
+        });
+        log('外网隧道检测: OK');
+      } catch (e) {
+        log('外网隧道断开，尝试重启...', 'WARN');
+        // 尝试重启 cloudflared
+        try {
+          const { spawn } = require('child_process');
+          // 杀掉旧的 cloudflared
+          spawn('pkill', ['-f', 'cloudflared']);
+          await new Promise(r => setTimeout(r, 2000));
+          // 重新启动
+          spawn('cloudflared', ['tunnel', '--url', 'http://localhost:3001'], {
+            detached: true,
+            stdio: 'ignore'
+          });
+          log('已触发隧道重启', 'WARN');
+        } catch (err) {
+          log('隧道重启失败: ' + err.message, 'ERROR');
+        }
+      }
     }
   }, 60000);
 }
