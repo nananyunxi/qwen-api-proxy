@@ -619,24 +619,29 @@ async function main() {
   // 定时检查（每 10 分钟）
   setInterval(periodicCheck, 10 * 60 * 1000);
   
-  // 防休眠：每 5 分钟调用一次 API，保持 sandbox 活跃
+  // 防休眠 + 隧道检测：每 5 分钟调用一次 API，防止 sandbox 休眠，并检测隧道状态
   setInterval(async () => {
     const access = loadAccessInfo();
     const apiKey = loadConfig().apiKey;
     
-    // 1. 调用本地 API
+    log('=== 防休眠检测 ===');
+    
+    // 1. 先调用本地 API
+    let localOk = false;
     try {
       const res = await fetch('http://localhost:3001/v1/models', {
         method: 'GET',
         headers: { 'Authorization': 'Bearer ' + apiKey },
         signal: AbortSignal.timeout(5000)
       });
-      log('防休眠-本地API: OK');
+      if (res.ok) localOk = true;
+      log('本地API: OK');
     } catch (e) {
-      log('防休眠-本地API失败: ' + e.message, 'WARN');
+      log('本地API失败: ' + e.message, 'WARN');
     }
     
     // 2. 调用外网 API（如果有）
+    let externalOk = false;
     if (access.external_url) {
       try {
         const res = await fetch(access.external_url + '/v1/models', {
@@ -644,11 +649,82 @@ async function main() {
           headers: { 'Authorization': 'Bearer ' + apiKey },
           signal: AbortSignal.timeout(10000)
         });
-        log('防休眠-外网API: OK');
+        if (res.ok) {
+          externalOk = true;
+          log('外网API: OK');
+        }
       } catch (e) {
-        // 外网可能未就绪，静默处理
+        log('外网API失败: ' + e.message, 'WARN');
       }
     }
+    
+    // 3. 如果本地服务挂了，重启整个服务
+    if (!localOk) {
+      log('本地服务异常，尝试重启...', 'WARN');
+      try {
+        const { spawn } = require('child_process');
+        spawn('pkill', ['-f', 'node manager']);
+        spawn('pkill', ['-f', 'cloudflared']);
+        await new Promise(r => setTimeout(r, 3000));
+        
+        // 重新启动
+        spawn('node', ['manager.js'], {
+          cwd: PROJECT_DIR,
+          detached: true,
+          stdio: 'ignore'
+        });
+        
+        log('已触发服务重启', 'WARN');
+      } catch (err) {
+        log('重启失败: ' + err.message, 'ERROR');
+      }
+    }
+    // 4. 如果外网挂了但本地正常，重启隧道
+    else if (!externalOk && access.external_url) {
+      log('外网隧道断开，尝试重启...', 'WARN');
+      try {
+        const { spawn } = require('child_process');
+        spawn('pkill', ['-f', 'cloudflared']);
+        await new Promise(r => setTimeout(r, 2000));
+        
+        // 重新启动 tunnel
+        const newProc = spawn('cloudflared', ['tunnel', '--url', 'http://localhost:3001'], {
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        
+        let resolved = false;
+        newProc.stderr.on('data', data => {
+          const output = data.toString();
+          const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+          
+          if (match && !resolved) {
+            const newUrl = match[0];
+            log('隧道已重建，新地址: ' + newUrl);
+            
+            // 更新 access.json
+            const config = loadConfig();
+            saveAccessInfo({
+              base_url: `${newUrl}/v1`,
+              model_id: 'qwen3.5-plus',
+              api_key: config.apiKey,
+              external_url: newUrl,
+              local_url: 'http://localhost:3001'
+            });
+            
+            // 飞书通知
+            sendFeishuNotification(`🔔 Qwen API 隧道已重建\n\n新外网地址: ${newUrl}\nAPI 端点: ${newUrl}/v1\n\n使用 /v1/info 获取最新信息`);
+            
+            resolved = true;
+          }
+        });
+        
+        log('隧道重启已触发', 'WARN');
+      } catch (err) {
+        log('隧道重启失败: ' + err.message, 'ERROR');
+      }
+    }
+    
+    log('=== 防休眠检测完成 ===');
   }, 5 * 60 * 1000);
 }
 
