@@ -619,15 +619,37 @@ async function main() {
   // 定时检查（每 10 分钟）
   setInterval(periodicCheck, 10 * 60 * 1000);
   
-  // 保活：每 1 分钟自检一次，防止休眠
+  // 防休眠：每 5 分钟调用一次 API，保持 sandbox 活跃
   setInterval(async () => {
-    // 1. 检测本地服务
+    const access = loadAccessInfo();
+    const apiKey = loadConfig().apiKey;
+    
+    // 1. 调用本地 API
     try {
-      const res = await fetch('http://localhost:3001/health');
-      if (!res.ok) throw new Error('health check failed');
+      const res = await fetch('http://localhost:3001/v1/models', {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + apiKey },
+        signal: AbortSignal.timeout(5000)
+      });
+      log('防休眠-本地API: OK');
     } catch (e) {
-      log('保活检测失败: ' + e.message, 'WARN');
+      log('防休眠-本地API失败: ' + e.message, 'WARN');
     }
+    
+    // 2. 调用外网 API（如果有）
+    if (access.external_url) {
+      try {
+        const res = await fetch(access.external_url + '/v1/models', {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + apiKey },
+          signal: AbortSignal.timeout(10000)
+        });
+        log('防休眠-外网API: OK');
+      } catch (e) {
+        // 外网可能未就绪，静默处理
+      }
+    }
+  }, 5 * 60 * 1000);
     
     // 2. 检测外网隧道
     const access = loadAccessInfo();

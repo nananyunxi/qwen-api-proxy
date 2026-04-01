@@ -81,20 +81,12 @@ cd qwen-api-proxy
 node manager.js
 ```
 
-或使用一键启动脚本（同时启动 API 服务和防休眠脚本）：
+服务启动后：
+- 自动检测并重启外网隧道
+- 每 5 分钟自动调用 API 防止 sandbox 休眠
+- URL 变化时自动通过飞书发送通知
 
-```bash
-cd qwen-api-proxy
-node start.js
-```
-
-服务启动后访问信息保存在 `data/access.json`，每次启动外网地址可能会变化。
-
-## 防休眠说明
-
-- 使用 `start.js` 一键启动时，会同时运行 `keepalive.js` 防休眠脚本
-- 防休眠脚本每 5 分钟调用一次 API，保持 sandbox 活跃
-- 如果 sandbox 长时间无活动，仍可能被休眠（这是环境限制）
+访问信息保存在 `data/access.json`，每次启动外网地址可能会变化。
 
 ## 注意事项
 
