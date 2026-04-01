@@ -10,10 +10,26 @@
 |------|------|
 | `data/access.json` | 访问信息（外网地址、API Key、模型） |
 | `data/config.json` | 服务配置（API Key） |
-| `data/credentials.json` | 登录凭证（账号密码，**不提交到 GitHub**） |
+| `data/credentials.json` | 登录凭证（账号密码 + 飞书通知配置，**不提交到 GitHub**） |
 | `data/qwen-state.json` | Qwen Cookie 状态（自动生成） |
 
 **注意：** `data/credentials.json` 和 `data/qwen-state.json` 包含敏感登录信息，已在 `.gitignore` 中排除，请勿手动提交到 GitHub。
+
+### credentials.json 配置示例
+
+```json
+{
+  "email": "your-email@example.com",
+  "password": "your-password",
+  "feishu": {
+    "app_id": "cli_xxxxxxxxxxxxxxx",
+    "app_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "user_id": "ou_xxxxxxxxxxxxxxxx"
+  }
+}
+```
+
+- **飞书通知**：当外网地址变化时，会自动推送新地址到飞书（需要先配置 lark-cli 并运行 `lark-cli auth login`）
 
 ## API 调用信息
 
@@ -28,9 +44,20 @@
 }
 ```
 
+## 查询端点
+
+| 端点 | 说明 |
+|------|------|
+| `GET /v1/info` | 获取当前外网访问信息 |
+| `GET /health` | 健康检查（返回 tunnel_url） |
+
 ## 调用示例
 
 ```bash
+# 查询当前访问信息
+curl https://xxx.trycloudflare.com/v1/info
+
+# 调用聊天 API
 curl -X POST {base_url}/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer {api_key}" \
