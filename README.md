@@ -2,6 +2,19 @@
 
 将 [chat.qwen.ai](https://chat.qwen.ai) 转换为 OpenAI 兼容 API。
 
+## 配置文件说明
+
+所有配置信息保存在 `data/` 目录下：
+
+| 文件 | 说明 |
+|------|------|
+| `data/access.json` | 访问信息（外网地址、API Key、模型） |
+| `data/config.json` | 服务配置（API Key） |
+| `data/credentials.json` | 登录凭证（账号密码，**不提交到 GitHub**） |
+| `data/qwen-state.json` | Qwen Cookie 状态（自动生成） |
+
+**注意：** `data/credentials.json` 和 `data/qwen-state.json` 包含敏感登录信息，已在 `.gitignore` 中排除，请勿手动提交到 GitHub。
+
 ## API 调用信息
 
 访问信息保存在 `data/access.json` 文件中：
