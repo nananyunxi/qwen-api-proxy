@@ -64,14 +64,33 @@ function saveConfig(config) {
 function sendFeishuNotification(message) {
   try {
     const cred = loadCredentials();
-    if (!cred.feishu || !cred.feishu.app_id || !cred.feishu.app_secret || !cred.feishu.user_id) {
+    if (!cred.feishu || !cred.feishu.app_id || !cred.feishu.app_secret) {
       return; // 未配置飞书
+    }
+    
+    // 尝试从 lark-cli 配置获取 user_id
+    let userId = cred.feishu.user_id;
+    if (!userId) {
+      try {
+        const larkConfig = JSON.parse(fs.readFileSync(path.join(process.env.HOME || '/root', '.lark-cli/config.json'), 'utf8'));
+        const app = larkConfig.apps?.find(a => a.appId === cred.feishu.app_id);
+        if (app?.users?.[0]?.userOpenId) {
+          userId = app.users[0].userOpenId;
+        }
+      } catch (e) {
+        // 忽略，尝试用配置中的 user_id
+      }
+    }
+    
+    if (!userId) {
+      log('飞书通知：未配置 user_id，无法发送', 'WARN');
+      return;
     }
     
     // 使用 lark-cli 发送消息到用户私信
     const { spawn } = require('child_process');
     
-    const larkProc = spawn('lark-cli', ['im', '+messages-send', '--user-id', cred.feishu.user_id, '--text', message, '--as', 'bot'], {
+    const larkProc = spawn('lark-cli', ['im', '+messages-send', '--user-id', userId, '--text', message, '--as', 'bot'], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     

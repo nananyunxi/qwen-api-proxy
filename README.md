@@ -23,13 +23,12 @@
   "password": "your-password",
   "feishu": {
     "app_id": "cli_xxxxxxxxxxxxxxx",
-    "app_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "user_id": "ou_xxxxxxxxxxxxxxxx"
+    "app_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   }
 }
 ```
 
-- **飞书通知**：当外网地址变化时，会自动推送新地址到飞书（需要先配置 lark-cli 并运行 `lark-cli auth login`）
+- **飞书通知**：配置 `app_id` 和 `app_secret` 后，服务启动或 URL 变化时会自动推送通知到飞书（首次使用需先运行 `lark-cli auth login` 授权）
 
 ## API 调用信息
 
