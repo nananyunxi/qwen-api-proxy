@@ -60,6 +60,75 @@ function saveConfig(config) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
+// 飞书机器人通知
+async function sendFeishuNotification(message) {
+  try {
+    const cred = loadCredentials();
+    if (!cred.feishu || !cred.feishu.app_id || !cred.feishu.app_secret) {
+      return; // 未配置飞书
+    }
+    
+    // 获取 tenant_access_token
+    const tokenResp = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: cred.feishu.app_id,
+        app_secret: cred.feishu.app_secret
+      })
+    });
+    const tokenData = await tokenResp.json();
+    if (!tokenData.tenant_access_token) {
+      log('飞书获取 token 失败: ' + JSON.stringify(tokenData), 'ERROR');
+      return;
+    }
+    const token = tokenData.tenant_access_token;
+    
+    // 获取应用所在的群聊列表
+    const chatResp = await fetch('https://open.feishu.cn/open-apis/contact/v3/users/me/chats', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const chatData = await chatResp.json();
+    
+    if (chatData.data && chatData.data.chat_list && chatData.data.chat_list.length > 0) {
+      // 发送到第一个群聊
+      const chatId = chatData.data.chat_list[0].chat_id;
+      const sendResp = await fetch('https://open.feishu.cn/open-apis/chat/v2/messages', {
+        method: 'POST',
+        headers: { 
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          receive_id_type: 'chat_id',
+          receive_id: chatId,
+          msg_type: 'text',
+          content: JSON.stringify({ text: message })
+        })
+      });
+      const sendData = await sendResp.json();
+      if (sendData.code === 0) {
+        log('飞书通知发送成功');
+      } else {
+        log('飞书通知发送失败: ' + JSON.stringify(sendData), 'ERROR');
+      }
+    } else {
+      log('飞书应用未加入任何群聊，请先添加机器人到群', 'WARN');
+    }
+  } catch (e) {
+    log('飞书通知异常: ' + e.message, 'ERROR');
+  }
+}
+
+function loadCredentials() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'credentials.json'), 'utf8'));
+  } catch (e) {
+    return {};
+  }
+}
+
 function loadAccessInfo() {
   try {
     return JSON.parse(fs.readFileSync(ACCESS_FILE, 'utf8'));
@@ -470,6 +539,9 @@ async function startTunnel(port) {
           local_url: `http://localhost:${port}`
         });
         
+        // 飞书通知
+        sendFeishuNotification(`🔔 Qwen API 服务已启动\n\n外网地址: ${tunnelUrl}\nAPI 端点: ${tunnelUrl}/v1\nAPI Key: ${config.apiKey}\n\n使用 /v1/info 获取最新信息`);
+        
         if (!resolved) {
           resolved = true;
           resolve(tunnelUrl);
@@ -610,6 +682,9 @@ async function main() {
                   external_url: newUrl,
                   local_url: 'http://localhost:3001'
                 });
+                
+                // 飞书通知
+                sendFeishuNotification(`🔔 Qwen API 隧道已重建\n\n新外网地址: ${newUrl}\nAPI 端点: ${newUrl}/v1\n\n使用 /v1/info 获取最新信息`);
                 
                 resolved = true;
                 resolve();
