@@ -78,15 +78,27 @@ curl -X POST {base_url}/chat/completions \
 
 ```bash
 cd qwen-api-proxy
-node manager.js
+
+# 启动 API 服务
+node manager.js &
+
+# 启动系统级防休眠脚本（防止 sandbox 自动休眠）
+node system-keepalive.js &
 ```
 
 服务启动后：
 - 自动检测并重启外网隧道
-- 每 5 分钟自动调用 API 防止 sandbox 休眠
 - URL 变化时自动通过飞书发送通知
 
 访问信息保存在 `data/access.json`，每次启动外网地址可能会变化。
+
+## 系统级防休眠
+
+在 sandbox 环境下运行服务时，需要同时启动 `system-keepalive.js`：
+- 每 3 分钟访问外部网站（百度、Google 等）
+- 保持 sandbox 活跃，防止自动休眠
+
+如果没有 system-keepalive.js，sandbox 会自动休眠导致服务断开。
 
 ## 注意事项
 
