@@ -93,7 +93,7 @@ node start.js
 ## 防休眠说明
 
 - 使用 `start.js` 一键启动时，会同时运行 `keepalive.js` 防休眠脚本
-- 防休眠脚本每 3 分钟调用一次 API，保持 sandbox 活跃
+- 防休眠脚本每 5 分钟调用一次 API，保持 sandbox 活跃
 - 如果 sandbox 长时间无活动，仍可能被休眠（这是环境限制）
 
 ## 注意事项

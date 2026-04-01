@@ -120,7 +120,7 @@ async function keepAlive() {
 // 立即执行一次
 keepAlive();
 
-// 每3分钟执行一次 (3 * 60 * 1000 = 180000ms)
-setInterval(keepAlive, 3 * 60 * 1000);
+// 每5分钟执行一次 (5 * 60 * 1000 = 300000ms)
+setInterval(keepAlive, 5 * 60 * 1000);
 
 log('防休眠脚本已启动，每3分钟执行一次保活检测');
