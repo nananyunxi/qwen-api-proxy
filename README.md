@@ -52,7 +52,6 @@ curl -X POST {base_url}/chat/completions \
 
 ```bash
 cd qwen-api-proxy
-npm install
 node manager.js
 ```
 
@@ -60,6 +59,6 @@ node manager.js
 
 ## 注意事项
 
-- 登录凭证有效期较长，失效后需重新运行 `node direct-login.js` 登录
+- 登录凭证保存在 `data/qwen-state.json`，失效后需手动重新登录保存 Cookie
 - API Key 在 `data/config.json` 中查看或重新生成
 - 外网地址在 `data/access.json` 中查看
