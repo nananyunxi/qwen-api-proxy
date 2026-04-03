@@ -506,10 +506,18 @@ function startAPIServer() {
       const qwenModels = await fetchQwenModels();
       
       if (qwenModels && qwenModels.length > 0) {
+        // 只返回基本信息，简化返回格式
+        const simplifiedModels = qwenModels.map(m => ({
+          id: m.id,
+          object: 'model',
+          created: m.created,
+          owned_by: 'qwen'
+        }));
+        
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           object: 'list',
-          data: qwenModels
+          data: simplifiedModels
         }));
       } else {
         // 如果获取失败，使用默认列表
