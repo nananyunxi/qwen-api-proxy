@@ -37,7 +37,7 @@
 ```json
 {
   "base_url": "https://xxx.trycloudflare.com/v1",
-  "model_id": "qwen3.5-plus",
+  "model_id": "qwen3.6-plus",
   "api_key": "qk_xxx",
   "external_url": "https://xxx.trycloudflare.com"
 }
@@ -52,15 +52,21 @@
 
 ## 调用示例
 
+假设外网地址为 `https://xxx.trycloudflare.com`，API Key 为 `qk_xxx`：
+
 ```bash
 # 查询当前访问信息
 curl https://xxx.trycloudflare.com/v1/info
 
+# 获取模型列表
+curl https://xxx.trycloudflare.com/v1/models \
+  -H "Authorization: Bearer qk_xxx"
+
 # 调用聊天 API
-curl -X POST {base_url}/chat/completions \
+curl -X POST https://xxx.trycloudflare.com/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer {api_key}" \
-  -d '{"model": "qwen3.5-plus", "messages": [{"role": "user", "content": "你好"}]}'
+  -H "Authorization: Bearer qk_xxx" \
+  -d '{"model": "qwen3.6-plus", "messages": [{"role": "user", "content": "你好"}]}'
 ```
 
 ## 支持的模型
@@ -72,7 +78,7 @@ curl https://xxx.trycloudflare.com/v1/models
 ```
 
 常见模型包括：
-- `qwen3.6-plus` - Qwen3.6 旗舰版
+- `qwen3.6-plus` - Qwen3.6 旗舰版（默认）
 - `qwen3.5-plus` - Qwen3.5 主力模型
 - `qwen3.5-omni-plus` - 多模态模型（支持音频）
 - `qwen3.5-flash` - Qwen3.5 快速模型
@@ -82,6 +88,37 @@ curl https://xxx.trycloudflare.com/v1/models
 ```bash
 cd qwen-api-proxy
 node manager.js
+```
+
+服务默认监听 **端口 3001**，启动后自动创建外网隧道。
+
+### 启动后查看访问信息
+
+服务启动后会自动输出外网地址，也可以通过以下方式查看：
+
+```bash
+# 方式1：查看控制台输出的 "外网地址"
+# 方式2：查看文件
+cat data/access.json
+
+# 方式3：API 查询
+curl http://localhost:3001/v1/info
+```
+
+### 调用示例
+
+假设外网地址为 `https://xxx.trycloudflare.com`，API Key 为 `qk_xxx`：
+
+```bash
+# 获取模型列表
+curl https://xxx.trycloudflare.com/v1/models \
+  -H "Authorization: Bearer qk_xxx"
+
+# 调用聊天 API
+curl -X POST https://xxx.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer qk_xxx" \
+  -d '{"model": "qwen3.6-plus", "messages": [{"role": "user", "content": "你好"}]}'
 ```
 
 服务启动后：
