@@ -65,14 +65,17 @@ curl -X POST {base_url}/chat/completions \
 
 ## 支持的模型
 
-| 模型 ID | 说明 |
-|---------|------|
-| `qwen3.5-plus` | Qwen3.5 主力模型 |
-| `qwen3.5-flash` | Qwen3.5 快速模型 |
-| `qwen3-max-2026-01-23` | Qwen3 最新旗舰 |
-| `qwen-plus-2025-07-28` | Qwen3 大杯 |
-| `qwen3-coder-plus` | 代码专用模型 |
-| `qwen3-vl-plus` | 视觉理解模型 |
+模型列表从 Qwen API 动态获取，可通过以下命令查看当前可用模型：
+
+```bash
+curl https://xxx.trycloudflare.com/v1/models
+```
+
+常见模型包括：
+- `qwen3.6-plus` - Qwen3.6 旗舰版
+- `qwen3.5-plus` - Qwen3.5 主力模型
+- `qwen3.5-omni-plus` - 多模态模型（支持音频）
+- `qwen3.5-flash` - Qwen3.5 快速模型
 
 ## 启动服务
 

@@ -169,8 +169,63 @@ async function validateCookie() {
     }
   } catch (e) {
     log('验证登录凭证失败: ' + e.message);
-    return { valid: false, reason: e.message };
+      return { valid: false, reason: e.message };
   }
+}
+
+// ─── 获取 Qwen 模型列表 ─────────────────────────────────────────────
+let cachedModels = null;
+let modelsCacheTime = 0;
+const MODELS_CACHE_DURATION = 5 * 60 * 1000; // 缓存 5 分钟
+
+async function fetchQwenModels() {
+  // 检查缓存
+  if (cachedModels && (Date.now() - modelsCacheTime) < MODELS_CACHE_DURATION) {
+    return cachedModels;
+  }
+  
+  const cookie = getCookie();
+  if (!cookie) {
+    return null;
+  }
+  
+  try {
+    const response = await fetch('https://chat.qwen.ai/api/v2/models', {
+      headers: {
+        'Cookie': cookie,
+        'Origin': 'https://chat.qwen.ai',
+        'Referer': 'https://chat.qwen.ai/'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.data && data.data.data) {
+      // 转换为 OpenAI 格式
+      const models = data.data.data.map(m => ({
+        id: m.id,
+        object: 'model',
+        created: Date.now(),
+        owned_by: 'qwen',
+        info: m.info || null
+      }));
+      
+      cachedModels = models;
+      modelsCacheTime = Date.now();
+      log('已更新模型列表: ' + models.map(m => m.id).join(', '));
+      return models;
+    }
+  } catch (e) {
+    log('获取模型列表失败: ' + e.message);
+  }
+  
+  return null;
+}
+
+// 清除模型缓存（用于强制刷新）
+function clearModelsCache() {
+  cachedModels = null;
+  modelsCacheTime = 0;
 }
 
 // ─── 重新登录（需要手动扫码或验证码） ─────────────────────────────
@@ -446,18 +501,29 @@ function startAPIServer() {
         res.end(JSON.stringify({ error: 'Invalid API Key' }));
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        object: 'list',
-        data: [
-          { id: 'qwen3.5-plus', object: 'model', created: 1234567890, owned_by: 'qwen' },
-          { id: 'qwen3.5-flash', object: 'model', created: 1234567890, owned_by: 'qwen' },
-          { id: 'qwen3-max-2026-01-23', object: 'model', created: 1234567890, owned_by: 'qwen' },
-          { id: 'qwen-plus-2025-07-28', object: 'model', created: 1234567890, owned_by: 'qwen' },
-          { id: 'qwen3-coder-plus', object: 'model', created: 1234567890, owned_by: 'qwen' },
-          { id: 'qwen3-vl-plus', object: 'model', created: 1234567890, owned_by: 'qwen' }
-        ]
-      }));
+      
+      // 动态获取模型列表
+      const qwenModels = await fetchQwenModels();
+      
+      if (qwenModels && qwenModels.length > 0) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          object: 'list',
+          data: qwenModels
+        }));
+      } else {
+        // 如果获取失败，使用默认列表
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          object: 'list',
+          data: [
+            { id: 'qwen3.6-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
+            { id: 'qwen3.5-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
+            { id: 'qwen3.5-omni-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
+            { id: 'qwen3.5-flash', object: 'model', created: Date.now(), owned_by: 'qwen' }
+          ]
+        }));
+      }
     }
     // 健康检查
     else if (pathUrl === '/health') {
