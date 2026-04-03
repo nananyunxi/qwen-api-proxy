@@ -496,7 +496,7 @@ function startAPIServer() {
         return;
       }
 
-      const model = req.body.model || 'qwen3.5-plus';
+      const model = req.body.model || 'qwen3.6-plus';
       const stream = req.body.stream || false;
       const userMessage = req.body.messages?.filter(m => m.role === 'user').pop()?.content || '';
       
@@ -548,7 +548,7 @@ function startAPIServer() {
         external_url: access.external_url || '',
         base_url: access.base_url || '',
         api_key: access.api_key || '',
-        model_id: access.model_id || 'qwen3.5-plus',
+        model_id: access.model_id || 'qwen3.6-plus',
         status: 'ok'
       }));
       return;
@@ -586,7 +586,7 @@ function startAPIServer() {
           object: 'list',
           data: [
             { id: 'qwen3.6-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
-            { id: 'qwen3.5-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
+            { id: 'qwen3.6-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
             { id: 'qwen3.5-omni-plus', object: 'model', created: Date.now(), owned_by: 'qwen' },
             { id: 'qwen3.5-flash', object: 'model', created: Date.now(), owned_by: 'qwen' }
           ]
@@ -613,7 +613,7 @@ function startAPIServer() {
       res.end(JSON.stringify({
         name: 'Qwen API Proxy',
         base_url: info.base_url || `http://localhost:${SERVER_PORT}/v1`,
-        model_id: 'qwen3.5-plus',
+        model_id: 'qwen3.6-plus',
         status: 'running'
       }));
     }
@@ -656,7 +656,7 @@ async function startTunnel(port) {
         const config = loadConfig();
         saveAccessInfo({
           base_url: `${tunnelUrl}/v1`,
-          model_id: 'qwen3.5-plus',
+          model_id: 'qwen3.6-plus',
           api_key: config.apiKey,
           external_url: tunnelUrl,
           local_url: `http://localhost:${port}`
@@ -839,7 +839,7 @@ async function main() {
             const config = loadConfig();
             saveAccessInfo({
               base_url: `${newUrl}/v1`,
-              model_id: 'qwen3.5-plus',
+              model_id: 'qwen3.6-plus',
               api_key: config.apiKey,
               external_url: newUrl,
               local_url: 'http://localhost:3001'
