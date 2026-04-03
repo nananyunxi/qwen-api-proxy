@@ -165,11 +165,16 @@ async function validateCookie() {
       return { valid: true };
     } else {
       log('登录凭证已失效: ' + data.message);
+      // 尝试自动重新登录
+      const relogin = await reLogin();
+      if (relogin) {
+        return { valid: true, relogged: true };
+      }
       return { valid: false, reason: data.message };
     }
   } catch (e) {
     log('验证登录凭证失败: ' + e.message);
-      return { valid: false, reason: e.message };
+    return { valid: false, reason: e.message };
   }
 }
 
@@ -228,12 +233,66 @@ function clearModelsCache() {
   modelsCacheTime = 0;
 }
 
-// ─── 重新登录（需要手动扫码或验证码） ─────────────────────────────
+// ─── 重新登录（自动登录） ───────────────────────────────────────
 async function reLogin() {
-  log('尝试重新登录...');
-  // 这里可以添加自动登录逻辑，如果 Qwen 支持的话
-  // 目前需要手动登录，保存凭证
-  log('请手动登录，凭证会自动保存到: ' + COOKIE_FILE);
+  const cred = loadCredentials();
+  if (!cred.email || !cred.password) {
+    log('未配置登录信息，请在 credentials.json 中配置 email 和 password', 'ERROR');
+    return false;
+  }
+  
+  log('尝试自动登录...');
+  
+  try {
+    // 密码需要 SHA256 哈希
+    const crypto = require('crypto');
+    const passwordHash = crypto.createHash('sha256').update(cred.password).digest('hex');
+    
+    const response = await fetch('https://chat.qwen.ai/api/v1/auths/signin', {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'Origin': 'https://chat.qwen.ai',
+        'Referer': 'https://chat.qwen.ai/'
+      },
+      body: JSON.stringify({
+        email: cred.email,
+        password: passwordHash
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.token) {
+      // 解析 token 获取过期时间
+      const tokenParts = data.token.split('.');
+      let expiresAt = Date.now() + 86400 * 1000; // 默认 24 小时
+      try {
+        const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+        expiresAt = payload.exp * 1000;
+      } catch (e) {}
+      
+      // 保存 cookie（token 格式）
+      const cookieData = {
+        cookies: [
+          { name: 'token', value: data.token, domain: 'chat.qwen.ai', path: '/', expires: expiresAt / 1000 }
+        ],
+        updated_at: new Date().toISOString()
+      };
+      
+      fs.writeFileSync(COOKIE_FILE, JSON.stringify(cookieData, null, 2));
+      log('自动登录成功！');
+      return true;
+    } else {
+      log('自动登录失败: ' + JSON.stringify(data), 'ERROR');
+      return false;
+    }
+  } catch (e) {
+    log('自动登录异常: ' + e.message, 'ERROR');
+    return false;
+  }
 }
 
 // ─── 检查服务状态 ─────────────────────────────────────────────────
@@ -506,12 +565,13 @@ function startAPIServer() {
       const qwenModels = await fetchQwenModels();
       
       if (qwenModels && qwenModels.length > 0) {
-        // 只返回基本信息，简化返回格式
+        // 只返回基本信息，完全移除 info
         const simplifiedModels = qwenModels.map(m => ({
           id: m.id,
           object: 'model',
           created: m.created,
-          owned_by: 'qwen'
+          owned_by: 'qwen',
+          // 不返回 info 字段，保持简洁
         }));
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
